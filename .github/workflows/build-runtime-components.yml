@@ -48,9 +48,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git curl make python3 meson ninja-build pkg-config rsync \
             build-essential libexpat1-dev xz-utils unzip binutils patch
-      - uses: android-actions/setup-android@v3
       - name: Install pinned Android NDK
-        run: sdkmanager 'ndk;29.0.14206865'
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'ndk;29.0.14206865'
       - name: Build PRoot and external loader
         run: |
           export ANDROID_NDK="$ANDROID_HOME/ndk/29.0.14206865"
@@ -134,9 +133,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - name: Install Android platform and build tools
-        run: sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-34' 'build-tools;34.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.14.3'
