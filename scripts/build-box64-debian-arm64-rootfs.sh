@@ -29,6 +29,9 @@ if [[ ! -x "$ROOTFS/bin/bash" ]]; then
   debootstrap --arch=arm64 --variant=minbase "$SUITE" "$ROOTFS" "$MIRROR"
 fi
 
+umount_all() { umount -lf "$ROOTFS/proc" "$ROOTFS/dev" "$ROOTFS/sys" 2>/dev/null || true; }
+trap umount_all EXIT
+mount -t proc proc "$ROOTFS/proc" && mount --bind /dev "$ROOTFS/dev" && mount -t sysfs sys "$ROOTFS/sys"
 # This is a guest Linux environment. Box64 is compiled with the guest's glibc
 # toolchain, not Android bionic/NDK.
 chroot "$ROOTFS" /bin/bash -Eeuc '
@@ -96,6 +99,7 @@ chroot "$ROOTFS" /bin/bash -Eeuc '
 '
 rm -rf "$ROOTFS$WORK_IN_ROOTFS"
 mkdir -p "$OUT"
+umount_all
 ARCHIVE="$OUT/debian-${SUITE}-arm64-box64-rootfs.tar.gz"
 tar --numeric-owner -C "$ROOTFS" -czf "$ARCHIVE" .
 sha256sum "$ARCHIVE" | tee "$OUT/debian-${SUITE}-arm64-box64-rootfs.sha256"

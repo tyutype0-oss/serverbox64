@@ -1,7 +1,9 @@
 plugins { id 'com.android.application' }
 
 def runtimeBaseUrl = (findProperty('runtimeBaseUrl') ?: '').toString()
-def releaseKeystore = System.getenv('KEYSTORE_FILE')
+def keystorePath = System.getenv('KEYSTORE_FILE')
+def useReleaseKey = (keystorePath != null && !keystorePath.isEmpty())
+def runNumber = Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
 
 android {
     namespace 'dev.servers.app'
@@ -11,18 +13,18 @@ android {
         applicationId 'dev.servers.app'
         minSdk 26
         targetSdk 34
-        versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+        versionCode runNumber
         versionName '2.0'
         ndk { abiFilters 'arm64-v8a' }
-        buildConfigField 'String', 'RUNTIME_BASE_URL', "\"${runtimeBaseUrl}\""
+        buildConfigField 'String', 'RUNTIME_BASE_URL', '"' + runtimeBaseUrl + '"'
     }
 
     buildFeatures { buildConfig true }
 
-    signingConfigs {
-        if (releaseKeystore) {
+    if (useReleaseKey) {
+        signingConfigs {
             release {
-                storeFile file(releaseKeystore)
+                storeFile file(keystorePath)
                 storePassword System.getenv('KEYSTORE_PASSWORD')
                 keyAlias System.getenv('KEY_ALIAS')
                 keyPassword System.getenv('KEY_PASSWORD')
@@ -33,8 +35,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            // Without a release keystore the APK is debug-signed so it is still installable.
-            signingConfig releaseKeystore ? signingConfigs.release : signingConfigs.debug
+            signingConfig signingConfigs.getByName(useReleaseKey ? 'release' : 'debug')
         }
     }
 
@@ -45,7 +46,6 @@ android {
         }
     }
 
-    // libproot*.so are host executables run from nativeLibraryDir: they must be extracted.
     packaging { jniLibs { useLegacyPackaging = true } }
 
     compileOptions {

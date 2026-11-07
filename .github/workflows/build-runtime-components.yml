@@ -153,7 +153,7 @@ jobs:
           fi
       - name: Build APK
         run: |
-          gradle --no-daemon assembleRelease \
+          gradle --no-daemon --stacktrace assembleRelease \
             -PruntimeBaseUrl="https://github.com/${{ github.repository }}/releases/download/runtime-latest"
       - uses: actions/upload-artifact@v4
         with:
