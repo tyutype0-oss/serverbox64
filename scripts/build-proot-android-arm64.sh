@@ -57,11 +57,11 @@ cp "$SOURCE/libproot.so" "$SOURCE/libproot-loader.so" "$OUT/"
 # This project currently targets 64-bit Linux guests only (Box32 is off).
 # Do not package the optional 32-bit loader into the arm64-only runtime.
 
-for file in "$OUT"/*.so; do
+rm -f "$OUT/libproot-loader32.so" "$OUT/libvirgl-server.so"; for file in "$OUT/libproot.so" "$OUT/libproot-loader.so"; do
   readelf -h "$file" | grep -q 'Machine:.*AArch64' || {
     echo "ERROR: wrong architecture in $file" >&2; readelf -h "$file" >&2; exit 4;
   }
-  readelf -l "$file" | grep -q '/system/bin/linker64' || {
+  [[ "$file" == */libproot-loader.so ]] || readelf -l "$file" | grep -q '/system/bin/linker64' || {
     echo "ERROR: $file does not use Android's 64-bit linker" >&2; readelf -l "$file" >&2; exit 5;
   }
   chmod 755 "$file"
