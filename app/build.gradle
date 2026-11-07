@@ -1,0 +1,56 @@
+plugins { id 'com.android.application' }
+
+def runtimeBaseUrl = (findProperty('runtimeBaseUrl') ?: '').toString()
+def releaseKeystore = System.getenv('KEYSTORE_FILE')
+
+android {
+    namespace 'dev.servers.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'dev.servers.app'
+        minSdk 26
+        targetSdk 34
+        versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+        versionName '2.0'
+        ndk { abiFilters 'arm64-v8a' }
+        buildConfigField 'String', 'RUNTIME_BASE_URL', "\"${runtimeBaseUrl}\""
+    }
+
+    buildFeatures { buildConfig true }
+
+    signingConfigs {
+        if (releaseKeystore) {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Without a release keystore the APK is debug-signed so it is still installable.
+            signingConfig releaseKeystore ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs += ['../AndroidIntegration/src/main/java']
+            jniLibs.srcDirs += ['../AndroidIntegration/src/main/jniLibs']
+        }
+    }
+
+    // libproot*.so are host executables run from nativeLibraryDir: they must be extracted.
+    packaging { jniLibs { useLegacyPackaging = true } }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint { abortOnError false }
+}

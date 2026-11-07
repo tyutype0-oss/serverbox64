@@ -1,0 +1,13 @@
+/build/
+/dist/
+.cache/
+**/__pycache__/
+*.py[cod]
+*.class
+*.log
+
+.gradle/
+build/
+app/build/
+local.properties
+*.keystore

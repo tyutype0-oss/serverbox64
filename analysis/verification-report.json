@@ -1,0 +1,98 @@
+{
+  "validation_scope": "static source and bundle checks only",
+  "apk": {
+    "package": "dev.servers.app",
+    "versionName": "1.0",
+    "minSdkVersion": "0x1a",
+    "targetSdkVersion": "0x22",
+    "permissions": [
+      "com.termux.permission.RUN_COMMAND"
+    ],
+    "zip_entries": 11,
+    "sha256": "dd45bcd58b4dfa576d1dc998131f4a5d5cfc808d35e15eec9edb0c38bae13383",
+    "status": "original reference APK; unchanged; still Termux-dependent"
+  },
+  "box64_source_version": "0.4.4",
+  "upstream_pins": {
+    "droidnative_app_commit": "fa591010d6e33adbf5a79178b874fd4abdc58931",
+    "droidnative_native_host_build_script_blob": "aed3eb4111492042dcaba75060619374ab4c33b6",
+    "droidnative_proot_commit": "4ac94ecbb567608725e1d68d5ea617800a76c9c4",
+    "android_ndk": "29.0.14206865"
+  },
+  "legacy_termux_dependencies": {
+    "manifest_permission": "com.termux.permission.RUN_COMMAND",
+    "service": "com.termux.app.RunCommandService",
+    "home": "/data/data/com.termux/files/home",
+    "bash": "/data/data/com.termux/files/usr/bin/bash",
+    "properties": [
+      "allow-external-apps=true",
+      "termux-setup-storage",
+      "termux-wake-lock"
+    ],
+    "note": "These findings describe the unchanged reference APK, not the standalone runtime source."
+  },
+  "existing_app_features_detected": [
+    "server folder discovery",
+    "start/stop/restart",
+    "server log/status",
+    "automatic restart",
+    "server update while preserving worlds and server.properties/allowlist/permissions",
+    "Bedrock pack library/install",
+    "server-folder picker",
+    "optional start-servers-on-open"
+  ],
+  "yaml_validation": "parsed",
+  "checks": {
+    "original_apk_package_dev.servers.app": true,
+    "original_apk_version_1.0": true,
+    "original_apk_min_sdk_26": true,
+    "original_apk_target_sdk_34": true,
+    "original_apk_is_still_termux_dependent": true,
+    "original_apk_does_not_contain_native_libs": true,
+    "legacy_termux_run_command_contract_detected": true,
+    "legacy_termux_bash_and_home_paths_detected": true,
+    "legacy_termux_setup_and_wakelock_detected": true,
+    "legacy_app_update_and_pack_features_detected": true,
+    "standalone_runtime_has_no_termux_execution_contract": true,
+    "box64_source_version_0.4.4": true,
+    "box64_source_documents_native_termux_limitation": true,
+    "java_resolver_rejects_ambiguous_jar_folders": true,
+    "app_home_uses_context_getDataDir": true,
+    "app_home_has_all_required_folders": true,
+    "app_home_rejects_path_traversal_and_symlinks": true,
+    "rootfs_recovery_is_explicit_and_lock_protected": true,
+    "service_recovers_before_shared_rootfs_lease": true,
+    "proot_launcher_uses_nativeLibraryDir": true,
+    "proot_launcher_sets_external_loader_and_tmp": true,
+    "proot_launcher_binds_guest_kernel_interfaces": true,
+    "guest_dns_is_mapped_from_android_connectivity": true,
+    "standalone_manifest_has_network_permissions": true,
+    "activity_controller_uses_foreground_service": true,
+    "service_is_foreground_and_stops_processes": true,
+    "service_has_wake_lock_support": true,
+    "service_reconciles_persisted_servers_after_process_death": true,
+    "rootfs_extractor_has_decompression_limits_and_crc_validation": true,
+    "guest_supervisor_cleans_up_on_termination_signal": true,
+    "repeatable_full_test_runner_exists": true,
+    "box64_built_for_linux_guest_not_android": true,
+    "box64_guest_has_java_21": true,
+    "proot_builder_pins_ndk_and_proot_revision": true,
+    "workflow_has_separate_guest_and_android_jobs": true,
+    "stale_android_box64_patch_removed": true,
+    "stale_android_box64_builder_removed": true,
+    "bash_syntax_build-box64-debian-arm64-rootfs.sh": true,
+    "bash_syntax_build-proot-android-arm64.sh": true,
+    "bash_syntax_server-supervisor.sh": true,
+    "bash_syntax_run-all-tests.sh": true,
+    "github_actions_yaml": true
+  },
+  "passed": 42,
+  "total": 42,
+  "result": "STATIC_CHECKS_PASS",
+  "not_claimed": [
+    "no Android APK was rebuilt",
+    "no PRoot native binaries were built in this environment",
+    "no Debian rootfs archive was built in this environment",
+    "no physical-device install or server test was run"
+  ]
+}

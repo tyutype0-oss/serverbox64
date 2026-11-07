@@ -1,0 +1,164 @@
+name: Build standalone Linux and Android runtime components
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'Box64Source/**'
+      - 'scripts/build-box64-debian-arm64-rootfs.sh'
+      - 'scripts/server-supervisor.sh'
+      - 'AndroidIntegration/**'
+      - 'tests/**'
+      - 'scripts/build-proot-android-arm64.sh'
+      - '.github/workflows/build-runtime-components.yml'
+      - 'app/**'
+      - '*.gradle'
+
+permissions:
+  contents: write
+
+jobs:
+  box64-linux-arm64:
+    # Build the Linux/glibc Box64 guest on a native ARM64 Linux machine.
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install rootfs builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debootstrap binutils cmake ninja-build
+      - name: Build Debian ARM64 guest with Box64
+        run: sudo -E bash scripts/build-box64-debian-arm64-rootfs.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: debian-trixie-arm64-box64-rootfs
+          path: |
+            dist/debian-trixie-arm64-box64-rootfs.tar.gz
+            dist/debian-trixie-arm64-box64-rootfs.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  android-proot-arm64:
+    # Android-host PRoot and the PROOT_LOADER bypass Android's app-data execve restriction.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git curl make python3 meson ninja-build pkg-config rsync \
+            build-essential libexpat1-dev xz-utils unzip binutils patch
+      - uses: android-actions/setup-android@v3
+      - name: Install pinned Android NDK
+        run: sdkmanager 'ndk;29.0.14206865'
+      - name: Build PRoot and external loader
+        run: |
+          export ANDROID_NDK="$ANDROID_HOME/ndk/29.0.14206865"
+          bash scripts/build-proot-android-arm64.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-arm64-proot-native-libs
+          path: |
+            AndroidIntegration/src/main/jniLibs/arm64-v8a/libproot.so
+            AndroidIntegration/src/main/jniLibs/arm64-v8a/libproot-loader.so
+            AndroidIntegration/src/main/jniLibs/arm64-v8a/libproot*.so
+            dist/droidnative-app-source.commit
+            dist/droidnative-proot-source.commit
+            dist/droidnative-proot-*-source.tar.gz
+            dist/android-arm64-proot.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  host-regression-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Java and Python test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-21-jdk python3-yaml zip
+      - name: Run host regression suite
+        run: bash tests/run-all-tests.sh
+
+  source-zip-with-reference-apk:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package source tree and original APK reference
+        run: |
+          zip -qr ServerBox64_Standalone_Source_Reference_APK.zip . \
+            -x '.git/*' 'build/*' 'dist/*' '**/__pycache__/*' '*.pyc' 'ServerBox64_Standalone_Source_Reference_APK.zip'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ServerBox64-Standalone-source-with-reference-apk
+          path: ServerBox64_Standalone_Source_Reference_APK.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-rootfs:
+    # The rootfs is too large for the APK; the app downloads it from this release on first launch.
+    needs: box64-linux-arm64
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: debian-trixie-arm64-box64-rootfs
+          path: rootfs
+      - name: Publish rootfs to the runtime-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          find rootfs -type f
+          F=$(find rootfs -name 'debian-trixie-arm64-box64-rootfs.tar.gz' | head -1)
+          S=$(find rootfs -name 'debian-trixie-arm64-box64-rootfs.sha256' | head -1)
+          gh release view runtime-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create runtime-latest --repo "$GITHUB_REPOSITORY" --title "Linux runtime" \
+              --notes "Debian ARM64 + Box64 rootfs downloaded by the app on first launch."
+          gh release upload runtime-latest "$F" "$S" --repo "$GITHUB_REPOSITORY" --clobber
+
+  build-apk:
+    needs: [android-proot-arm64, host-regression-tests]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-arm64-proot-native-libs
+          path: .
+      - name: Check native libs are in place
+        run: |
+          ls -l AndroidIntegration/src/main/jniLibs/arm64-v8a/
+          test -f AndroidIntegration/src/main/jniLibs/arm64-v8a/libproot.so
+          test -f AndroidIntegration/src/main/jniLibs/arm64-v8a/libproot-loader.so
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android platform and build tools
+        run: sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+      - name: Prepare signing key (optional secrets)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> "$GITHUB_ENV"
+          else
+            echo "No KEYSTORE_BASE64 secret: APK will be debug-signed."
+          fi
+      - name: Build APK
+        run: |
+          gradle --no-daemon assembleRelease \
+            -PruntimeBaseUrl="https://github.com/${{ github.repository }}/releases/download/runtime-latest"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ServerBox64-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
